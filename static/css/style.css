@@ -1,0 +1,46 @@
+body{
+    background-color: white;
+}
+
+
+.header-logo-section .media-object{
+    width: 150px;
+    height: 150px;
+}
+
+.top-section {
+    text-align: right;
+}
+
+
+.post-content{
+        margin: 15px 0;
+}
+
+#post-delete, .comment-delete{
+    margin-left: 10px;
+}
+
+@media screen and (max-width: 767px) {
+    .header-logo-section .media-object{
+        margin: auto;
+    }
+
+    .top-section {
+        text-align: center;
+    }
+
+    .post .post-header{
+        text-align: center;
+    }
+}
+
+
+
+.login-button-options{
+    margin: 10px;
+}
+
+.comment-form{
+    margin: 20px 0 20px 0;
+}

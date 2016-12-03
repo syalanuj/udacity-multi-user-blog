@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+    
+    <div class="row text-center">
+        <div class="sub-work col-md-12">
+            <h2>Multi User blog</h2>
+            {% if deleted_post_id %}
+                <div class="alert alert-success" role="alert">
+                    <span class="glyphicon glyphicon-success" aria-hidden="true"></span>
+                    Post deleted successully
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% for post in posts %}
+        {% if post.key().id()|string != deleted_post_id|string %}
+        <div class="row">
+            {{ post.render() | safe }}
+        </div>
+        {% endif %}
+    {% endfor %}
+
+{% endblock %}
