@@ -8,6 +8,7 @@ from google.appengine.ext import db
 from user import User
 from post import Post
 from comment import Comment
+from like import Like
 import jinjaHelper
 
 secret = 'topSecret'
@@ -81,13 +82,15 @@ class PostPage(MultiUserBlogHandler):
         comments = db.GqlQuery("select * from Comment where post_id = " +
                                post_id + " order by created desc")
 
+        likes = db.GqlQuery("select * from Like where post_id="+post_id)
+
         if not post:
             self.error(404)
             return
 
         error = self.request.get('error')
 
-        self.render("postDetails.html", post=post, comments=comments, error=error)
+        self.render("postDetails.html", post=post, noOfLikes = likes.count(), comments=comments, error=error)
 
     def post(self, post_id):
         key = db.Key.from_path('Post', int(post_id), parent=blog_key())
@@ -99,6 +102,22 @@ class PostPage(MultiUserBlogHandler):
 
         c = ""
         if(self.user):
+
+            if(self.request.get('like') and 
+                self.request.get('like') == "update"):
+                likes = db.GqlQuery("select * from Like where post_id = " +
+                                        post_id + " and user_id = " + 
+                                        str(self.user.key().id()))
+
+                if(self.user.key().id() == post.user_id):
+                    self.redirect("/blog/" + post_id +
+                                    "?error=You cannot Like your" +
+                                    "post.!!")
+                    return
+                elif likes.count() == 0:
+                    l = Like(parent=blog_key(), user_id=self.user.key().id(),
+                                post_id=int(post_id))
+                    l.put()
             
             if(self.request.get('comment')):
                 c = Comment(parent=blog_key(), user_id=self.user.key().id(),
@@ -107,12 +126,12 @@ class PostPage(MultiUserBlogHandler):
                 c.put()
         else:
             self.redirect("/login?error= Login before " +
-                          "edit or comment.!!")
+                          "edit or comment or like.!!")
             return
 
         comments = db.GqlQuery("select * from Comment where post_id = " +
                                post_id + "order by created desc")
-        self.render("postDetails.html", post=post, comments=comments, new=c)
+        self.render("postDetails.html", post=post, noOfLikes = likes.count(), comments=comments, new=c)
 
 
 class NewPost(MultiUserBlogHandler):
@@ -125,7 +144,7 @@ class NewPost(MultiUserBlogHandler):
     def post(self):
         
         if not self.user:
-            self.redirect('/blog')
+            return self.redirect('/blog')
 
         subject = self.request.get('subject')
         content = self.request.get('content')
@@ -177,20 +196,25 @@ class EditPost(MultiUserBlogHandler):
         if not self.user:
             self.redirect('/blog')
 
-        subject = self.request.get('subject')
-        content = self.request.get('content')
-
-        if subject and content:
-            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-            post = db.get(key)
-            post.subject = subject
-            post.content = content
-            post.put()
-            self.redirect('/blog/%s' % post_id)
         else:
-            error = "subject and content, please!"
-            self.render("editpost.html", subject=subject,
+            if post.user_id == self.user.key().id():
+                subject = self.request.get('subject')
+                content = self.request.get('content')
+
+                if subject and content:
+                    key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+                    post = db.get(key)
+                    post.subject = subject
+                    post.content = content
+                    post.put()
+                    self.redirect('/blog/%s' % post_id)
+                else:
+                    error = "subject and content, please!"
+                    self.render("editpost.html", subject=subject,
                         content=content, error=error)
+            else:
+                self.redirect("/login?error=You need to be logged, " +
+                          "in order to edit your post!!")
 
 
 class DeleteComment(MultiUserBlogHandler):
@@ -239,9 +263,14 @@ class EditComment(MultiUserBlogHandler):
             key = db.Key.from_path('Comment',
                                    int(comment_id), parent=blog_key())
             c = db.get(key)
-            c.comment = comment
-            c.put()
-            self.redirect('/blog/%s' % post_id)
+            if c.user_id == self.user.key().id():    
+                c.comment = comment
+                c.put()
+                self.redirect('/blog/%s' % post_id)
+            else:
+                self.redirect("/blog" + post_id + 
+                                "?error=You don't have access to edit this" +
+                                " comment.")
         else:
             error = "subject and content, please!"
             self.render("editpost.html", subject=subject,
