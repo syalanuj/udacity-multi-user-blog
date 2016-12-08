@@ -102,12 +102,12 @@ class PostPage(MultiUserBlogHandler):
 
         c = ""
         if(self.user):
+            likes = db.GqlQuery("select * from Like where post_id = " +
+                                post_id + " and user_id = " + 
+                                str(self.user.key().id()))
 
             if(self.request.get('like') and 
                 self.request.get('like') == "update"):
-                likes = db.GqlQuery("select * from Like where post_id = " +
-                                        post_id + " and user_id = " + 
-                                        str(self.user.key().id()))
 
                 if(self.user.key().id() == post.user_id):
                     self.redirect("/blog/" + post_id +
@@ -195,8 +195,11 @@ class EditPost(MultiUserBlogHandler):
         
         if not self.user:
             self.redirect('/blog')
+            return
 
         else:
+            key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+            post = db.get(key)
             if post.user_id == self.user.key().id():
                 subject = self.request.get('subject')
                 content = self.request.get('content')
